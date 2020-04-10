@@ -37,7 +37,9 @@ def create_app(test_config=None):
 
   @app.route('/categories', methods=['GET'])
   def get_categories():
-  """As the name suggests the function returns the categories in our database"""
+    """
+    As the name suggests the function returns the categories in our database
+    """
     try:
         categories = Category.query.all()
         # To check if the category query returns something or not
@@ -55,9 +57,9 @@ def create_app(test_config=None):
 
   @app.route("/questions", methods=['GET'])
   def get_questions():
-  """
-  Returns the questions from the database
-  """
+    """
+    Returns the questions from the database
+    """
     try:
         page = int(request.args.get('page', 1))
         categories = list(map(Category.format, Category.query.all()))
@@ -80,9 +82,9 @@ def create_app(test_config=None):
 
   @app.route('/questions/<int:question_id>', methods=['DELETE'])
   def delete_question(question_id):
-  """
-  Used to delete a specified question. The question is identified by it's id.
-  """
+      """
+      Used to delete a specified question. The question is identified by it's id.
+      """
       try:
         question = Question.query.filter_by(id==question_id).delete()
         db.session.commit()
@@ -101,9 +103,9 @@ def create_app(test_config=None):
 
   @app.route('/questions', methods=['POST'])
   def add_question():
-  """
-  Used to create a new question
-  """
+    """
+    Used to create a new question
+    """
     try:
         # Gets all the fields required for making Question
         question = request.args.get('question')
@@ -134,9 +136,9 @@ def create_app(test_config=None):
 
   @app.route("/questions/search/", methods=['GET'])
   def get_questions_substring():
-  """
-  Checks if the given phrase is in any Question table's question column in database
-  """
+    """
+    Checks if the given phrase is in any Question table's question column in database
+    """
     try:
         searchTerm = request.args.get('searchTerm')
         query_string = "%" + searchTerm + "%"
@@ -160,9 +162,9 @@ def create_app(test_config=None):
 
   @app.route('/categories/<int:category_id>/questions', methods=['GET'])
   def get_categories_questions(category_id):
-  """
-  Gets all the question from a given category
-  """
+    """
+    Gets all the question from a given category
+    """
     try:
         category = Category.query.filter_by(id==category_id).first()
         category_name = category.name
@@ -184,6 +186,9 @@ def create_app(test_config=None):
 
   @app.route('/play', methods=['POST'])
   def play():
+    """
+    Used to start the game
+    """
     data = request.args.get('previous_questions')
     previous_questions = request.args.get('previous_questions')
     quiz_category = request.args.get('category')
@@ -226,9 +231,9 @@ def create_app(test_config=None):
 
   @app.errorhandler(404)
   def not_found(error):
-  """
-  To handle 404 error
-  """
+    """
+    To handle 404 error
+    """
     return jsonify({
         "success" : False,
         "error" : 404,
@@ -237,9 +242,9 @@ def create_app(test_config=None):
 
   @app.errorhandler(422)
   def not_found(error):
-  """
-  To handle 422 error
-  """
+    """
+    To handle 422 error
+    """
     return jsonify({
       "success" : False,
       "error" : 422,
@@ -248,9 +253,9 @@ def create_app(test_config=None):
 
   @app.errorhandler(500)
   def not_found(error):
-  """
-  To handle 500 error
-  """
+    """
+    To handle 500 error
+    """
     return jsonify({
       "success" : False,
       "error" : 500,
@@ -260,4 +265,3 @@ def create_app(test_config=None):
 
   return app
 
-    
