@@ -13,7 +13,7 @@ def create_app(test_config=None):
   app = Flask(__name__)
   setup_db(app)
 
-  CORS(app, resources={r"*/*": {"origins": "*"}})
+  CORS(app, resources={r"*": {"origins": "*"}})
 
   @app.after_request
   def after_request(response):
@@ -43,13 +43,13 @@ def create_app(test_config=None):
     try:
         categories = Category.query.all()
         # To check if the category query returns something or not
-        if categories > 0 and categories is not None:
-          category_formatted = [category.format() for category in categories]
+        if len(categories) > 0:
+          category_formatted = {category.id: category.type for category in categories}
           result = {
-            "status_code" : 200,
             "success" : True,
-            "category": categories
+            "category": category_formatted
           }
+          print(result)
           return jsonify(result)
         abort(404)
     except:
@@ -62,19 +62,21 @@ def create_app(test_config=None):
     """
     try:
         page = int(request.args.get('page', 1))
-        categories = list(map(Category.format, Category.query.all()))
+        categories = Category.query.all()
+        category_formatted = {category.id: category.type for category in categories}
         questions = Question.query.all()
         # checks if any questions exists in the database
         if len(questions) > 0:
             questions_query = paginate(questions, page)
+            print(questions_query)
             result = {
-                "status_code" : 200,
-                "success" : True,
+                "success" : "True",
                 "questions": questions_query,
-                "total_questions": len(questions_query),
-                "categories": categories,
-                "current_category": None,
+                "total_questions": 1,
+                "categories": category_formatted,
+                "current_category": None
             }
+            print(jsonify(result))
             return jsonify(result)
         abort(404)
     except:
@@ -89,7 +91,6 @@ def create_app(test_config=None):
         question = Question.query.filter_by(id==question_id).delete()
         db.session.commit()
         result = {
-          "status_code" : 200,
           "success" : True,
           "question" : question
         }
@@ -119,7 +120,6 @@ def create_app(test_config=None):
         db.session.commit()
         questions_query = Question.query.all()
         result = {
-            "status_code" : 200,
             "success" : True,
             "question" : question.format(),
             "total_questions" : len(questions_query),
@@ -149,13 +149,12 @@ def create_app(test_config=None):
             paginated_questions = paginate(questions)
             questions_formatting = [question.format() for question in paginated_questions]
             result = {
-                "status_code" : 200,
                 "success" : True,
                 "question" : question,
                 "total_questions" : total_questions,
                 "current_category" : None
             }
-            return result
+            return jsonify(result)
         abort(404)
     except:
         abort(500)
@@ -173,13 +172,12 @@ def create_app(test_config=None):
         if questions > 0:
             paginated_questions = paginate(questions)
             result = {
-                "status_code" : 200,
                 "success" : True,
                 "questions" : paginated_questions,
                 "total_questions" : total_questions,
                 "current_category" : category_id
             }
-            return result
+            return jsonify(result)
         abort(404)
     except:
         abort(422)
@@ -211,7 +209,6 @@ def create_app(test_config=None):
             # randomly selects a questions from available_questions
             rand_question = questions[random.random(0,len(available_questions)-1)]
             return jsonify({
-                "status_code" : 200,
                 "success" : True,
                 "question" : rand_question.format(),
                 'previous_questions': previous_questions,
@@ -219,7 +216,6 @@ def create_app(test_config=None):
             })
         else:
             return jsonify({
-              "status_code" : 200,
               "success" : True,
               'question': 'There are no more questions in this category. Try another category!',
               'previous_questions': previous_questions,
