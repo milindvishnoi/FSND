@@ -25,118 +25,105 @@ class TriviaTestCase(unittest.TestCase):
             # create all tables
             self.db.create_all()
 
-        question = Question(id=1, question="What's your name?", difficulty=1, category="KnowYou", answer="milind")
-        category = Category(id=1, type="KnowYou")
-        self.db.session.add(question)
-        self.db.session.add(category)
-        self.db.session.commit()
+        try:
+            category = Category(id=1, type="Personal")
+            question = Question(id=1, question="Name?", answer="Milind", category=1, difficulty=1)
+            self.db.session.add(category)
+            self.db.session.add(question)
+            self.db.session.commit()
+        except:
+            return
 
-
-    
     def tearDown(self):
         """Executed after reach test"""
         pass
 
-    """
-    TODO
-    Write at least one test for each test for successful operation and for expected errors.
-    """
-    def test_get_categories():
+    def test_get_categories(self):
         res = self.client().get('/categories')
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
-        self.assertTrue(data['category'])
+        self.assertTrue(data['categories'])
 
-     def test_get_questions():
+    def test_get_questions(self):
         res = self.client().get('/questions?page=1')
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data['success'], True)
+        self.assertTrue(data['success'], True)
         self.assertTrue(data['questions'])
         self.assertTrue(data['total_questions'])
         self.assertTrue(data['categories'])
-        self.assertTrue(data['current_category'])
+        self.assertEquals(data['current_category'], None)
 
-    def test_add_questions():
+    def test_add_question(self):
         res = self.client().post('/questions', json={"question": "NewQ",
-                                                        "answer_text": "answer_text",
-                                                        "category" : "KnowYou",
-                                                        "difficulty": 1})
+                                                     "answer": "answer_text",
+                                                     "category": 1,
+                                                     "difficulty": 1})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data['success'], True)
-        self.assertTrue(data['questions'])
+        self.assertTrue(data['success'])
+        self.assertTrue(data['question'])
         self.assertTrue(data['total_questions'])
-        self.assertTrue(data['current_category'])
 
-    def test_delete_question():
+    def test_delete_question(self):
         res = self.client().delete('/questions/2')
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data['success'], True)
-        self.assertTrue(data['questions'])
+        self.assertTrue(data['success'])
+        self.assertTrue(data['question'])
 
-    def test_get_questions_substring():
-        res = self.client().post('/question/search/a')
+    def test_get_questions_substring(self):
+        res = self.client().post('/question/search', json={"searchTerm": "m"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data['success'], True)
+        self.assertTrue(data['success'])
         self.assertTrue(data['questions'])
         self.assertTrue(data['total_questions'])
         self.assertTrue(data['current_category'])
 
-
-
-    def test_get_categories_questions():
-        res = self.client().post('/categories/1/questions')
+    def test_get_categories_questions(self):
+        res = self.client().get('/categories/1/questions')
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data['success'], True)
+        self.assertTrue(data['success'])
         self.assertTrue(data['questions'])
         self.assertTrue(data['total_questions'])
         self.assertTrue(data['current_category'])
 
-    def test_play():
+    def test_play(self):
         res = self.client().post('/play', json={"previous_questions": [],
-                                            "category": "ALL"})
+                                            "quiz_category": "ALL"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(data['success'], True)
-        self.assertTrue(data['questions'])
-        self.assertTrue(data['previous_question'])
+        self.assertTrue(data['success'])
+        self.assertTrue(data['question'])
         self.assertTrue(data['quiz_category'])
 
-    def test_404_error():
+    def test_404_error(self):
         res = self.client().get('/questions?page=1000')
         data = json.loads(res.data)
 
-        self.assertEqual(res.error, 404)
-        self.assertEqual(data['success'], False)
+        self.assertEqual(data['error'], 404)
+        self.assertEqual(data['success'], 'False')
         self.assertEqual(data['message'], "Page Not Found")
 
-    def test_422_error():
-        res = self.client().get('/questions')
+    def test_422_error(self):
+        res = self.client().get('/questions/search', json={"searchTerm": "!",
+                                                        "category": "ALL"})
         data = json.loads(res.data)
 
-        self.assertEqual(res.error, 422)
+        self.assertEqual(data['error'], 422)
         self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], "Unprocessable Entity")
 
-    def test_500_error():
-        res = self.client().post('/questions/search/a')
-        data = json.loads(res.data)
-
-        self.assertEqual(res.error, 500)
-        self.assertEqual(data['success'], False)
-        self.assertEqual(data['message'], "Internal Server Error")
 
 # Make the tests conveniently executable
 if __name__ == "__main__":

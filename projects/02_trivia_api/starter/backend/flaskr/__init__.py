@@ -1,10 +1,10 @@
 import os
-from flask import Flask, request, abort, jsonify
+from flask import Flask, request, abort, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
 
-from models import setup_db, Question, Category
+from models import setup_db, Question, Category, db
 
 QUESTIONS_PER_PAGE = 10
 
@@ -47,9 +47,8 @@ def create_app(test_config=None):
           category_formatted = {category.id: category.type for category in categories}
           result = {
             "success" : True,
-            "category": category_formatted
+            "categories": category_formatted
           }
-          print(result)
           return jsonify(result)
         abort(404)
     except:
@@ -65,18 +64,16 @@ def create_app(test_config=None):
         categories = Category.query.all()
         category_formatted = {category.id: category.type for category in categories}
         questions = Question.query.all()
-        # checks if any questions exists in the database
-        if len(questions) > 0:
-            questions_query = paginate(questions, page)
-            print(questions_query)
+        total_questions = len(questions)
+        questions_query = paginate(questions, page)
+        if len(questions_query) > 0:
             result = {
-                "success" : "True",
+                "success": True,
                 "questions": questions_query,
-                "total_questions": 1,
+                "total_questions": total_questions,
                 "categories": category_formatted,
                 "current_category": None
             }
-            print(jsonify(result))
             return jsonify(result)
         abort(404)
     except:
@@ -88,11 +85,13 @@ def create_app(test_config=None):
       Used to delete a specified question. The question is identified by it's id.
       """
       try:
-        question = Question.query.filter_by(id==question_id).delete()
+        q = Question.query.filter_by(id=question_id)
+        q = q.format()
+        question = Question.query.filter_by(id=question_id).delete()
         db.session.commit()
         result = {
-          "success" : True,
-          "question" : question
+          "success": True,
+          "question": q
         }
         return jsonify(result)
       except:
@@ -109,12 +108,13 @@ def create_app(test_config=None):
     """
     try:
         # Gets all the fields required for making Question
-        question = request.args.get('question')
-        answer_text = request.args.get('answer_text')
-        category = request.args.get('category')
-        difficulty = int(request.args.get('difficulty'))
-        id = len(Question.query.all()) + 1
-        question = Question(question=question, answer=answer_text, category=category, difficulty=difficulty, id=id)
+        request_json = request.get_json()
+        question = request_json['question']
+        answer_text = request_json['answer']
+        category = request_json['category']
+        difficulty = int(request_json['difficulty'])
+        id = int(len(Question.query.all()) + 1)
+        question = Question(id=id, question=question, answer=answer_text, category=category, difficulty=difficulty)
         # adding the question created into the database
         db.session.add(question)
         db.session.commit()
@@ -134,30 +134,35 @@ def create_app(test_config=None):
         db.session.close()
     return None
 
-  @app.route("/questions/search/", methods=['GET'])
+  @app.route("/questions/search", methods=['POST'])
   def get_questions_substring():
     """
     Checks if the given phrase is in any Question table's question column in database
     """
     try:
-        searchTerm = request.args.get('searchTerm')
-        query_string = "%" + searchTerm + "%"
+        data = request.get_json()
+        search_term = data['searchTerm']
+        query_string = "%" + search_term + "%"
         # checks if searchTerm exists in the the Questions table
         questions = Question.query.filter(Question.question.ilike(query_string)).all()
         total_questions = len(Question.query.all())
-        if len(questions) > 0:
-            paginated_questions = paginate(questions)
-            questions_formatting = [question.format() for question in paginated_questions]
+        categories = Category.query.all()
+        category_formatted = {category.id: category.type for category in categories}
+        page = int(request.args.get('page', 1))
+        paginated_questions = paginate(questions, page)
+        if len(paginated_questions)!= 0:
             result = {
-                "success" : True,
-                "question" : question,
-                "total_questions" : total_questions,
-                "current_category" : None
+                "success" : "True",
+                "questions": paginated_questions,
+                "total_questions": total_questions,
+                "categories": category_formatted,
+                "current_category": None
             }
             return jsonify(result)
-        abort(404)
+        else:
+            abort(404)
     except:
-        abort(500)
+        abort(422)
 
   @app.route('/categories/<int:category_id>/questions', methods=['GET'])
   def get_categories_questions(category_id):
@@ -165,12 +170,12 @@ def create_app(test_config=None):
     Gets all the question from a given category
     """
     try:
-        category = Category.query.filter_by(id==category_id).first()
-        category_name = category.name
-        questions = Question.query.filter_by(category==category_name).all()
+        category_id = str(category_id)
+        page = int(request.args.get('page', 1))
+        questions = Question.query.filter_by(category=category_id).all()
         total_questions = len(Question.query.all())
-        if questions > 0:
-            paginated_questions = paginate(questions)
+        if len(questions) > 0:
+            paginated_questions = paginate(questions, page)
             result = {
                 "success" : True,
                 "questions" : paginated_questions,
@@ -187,17 +192,17 @@ def create_app(test_config=None):
     """
     Used to start the game
     """
-    data = request.args.get('previous_questions')
-    previous_questions = request.args.get('previous_questions')
-    quiz_category = request.args.get('category')
-    # To set categories_id
+    data = request.get_json()
+    previous_questions = data['previous_questions']
+    quiz_category = data['quiz_category']
+    category_id = 0
     if quiz_category != "ALL":
-        category_id = quiz_category['id']
+        category_id = int(quiz_category['id'])
     try:
         # Checking if quiz_category is "ALL" or not to set the questions variable by getting the
         # questions from database
-        if category_id:
-            questions = Question.query.filter(Question.category==quiz_category).all()
+        if category_id != 0:
+            questions = Question.query.filter_by(category=category_id).all()
         else:
             questions = Question.query.all()
         available_questions = []
@@ -205,20 +210,20 @@ def create_app(test_config=None):
         for question in questions:
             if question not in previous_questions:
                 available_questions.append(question)
-        if available_questions != []:
+        if len(available_questions) > 0:
             # randomly selects a questions from available_questions
-            rand_question = questions[random.random(0,len(available_questions)-1)]
+            rand_question = available_questions[random.randint(0,len(available_questions)-1)]
             return jsonify({
                 "success" : True,
                 "question" : rand_question.format(),
-                'previous_questions': previous_questions,
+                "previous_questions" : previous_questions,
                 'quiz_category': quiz_category
             })
         else:
             return jsonify({
               "success" : True,
               'question': 'There are no more questions in this category. Try another category!',
-              'previous_questions': previous_questions,
+              "previous_questions" : previous_questions,
               'quiz_category': quiz_category
             })
         abort(404)
@@ -226,38 +231,26 @@ def create_app(test_config=None):
         abort(422)
 
   @app.errorhandler(404)
-  def not_found(error):
+  def page_not_found(error):
     """
     To handle 404 error
     """
     return jsonify({
-        "success" : False,
-        "error" : 404,
-        "message" : "Page Not Found"
+        "success": False,
+        "error": 404,
+        "message": "Page Not Found"
     }), 404
 
   @app.errorhandler(422)
-  def not_found(error):
+  def unprocessable_entity(error):
     """
     To handle 422 error
     """
     return jsonify({
-      "success" : False,
-      "error" : 422,
-      "message" : "Unprocessable Entity"
+      "success": False,
+      "error": 422,
+      "message": "Unprocessable Entity"
     }), 422
-
-  @app.errorhandler(500)
-  def not_found(error):
-    """
-    To handle 500 error
-    """
-    return jsonify({
-      "success" : False,
-      "error" : 500,
-      "message" : "Internal Server Error"
-    }), 500
-
 
   return app
 
