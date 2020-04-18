@@ -25,15 +25,6 @@ class TriviaTestCase(unittest.TestCase):
             # create all tables
             self.db.create_all()
 
-        try:
-            category = Category(id=1, type="Personal")
-            question = Question(id=1, question="Name?", answer="Milind", category=1, difficulty=1)
-            self.db.session.add(category)
-            self.db.session.add(question)
-            self.db.session.commit()
-        except:
-            return
-
     def tearDown(self):
         """Executed after reach test"""
         pass
@@ -55,10 +46,10 @@ class TriviaTestCase(unittest.TestCase):
         self.assertTrue(data['questions'])
         self.assertTrue(data['total_questions'])
         self.assertTrue(data['categories'])
-        self.assertEquals(data['current_category'], None)
+        self.assertEqual(data['current_category'], None)
 
     def test_add_question(self):
-        res = self.client().post('/questions', json={"question": "NewQ",
+        res = self.client().post('/questions', json={"question": "NewQ?",
                                                      "answer": "answer_text",
                                                      "category": 1,
                                                      "difficulty": 1})
@@ -70,7 +61,8 @@ class TriviaTestCase(unittest.TestCase):
         self.assertTrue(data['total_questions'])
 
     def test_delete_question(self):
-        res = self.client().delete('/questions/2')
+        question = Question.query.first()
+        res = self.client().delete('/questions/'+str(question.id))
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
@@ -78,14 +70,14 @@ class TriviaTestCase(unittest.TestCase):
         self.assertTrue(data['question'])
 
     def test_get_questions_substring(self):
-        res = self.client().post('/question/search', json={"searchTerm": "m"})
+        res = self.client().post('/questions/search', json={"searchTerm": "?"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
         self.assertTrue(data['success'])
         self.assertTrue(data['questions'])
         self.assertTrue(data['total_questions'])
-        self.assertTrue(data['current_category'])
+        self.assertEqual(data['current_category'], None)
 
     def test_get_categories_questions(self):
         res = self.client().get('/categories/1/questions')
@@ -99,7 +91,8 @@ class TriviaTestCase(unittest.TestCase):
 
     def test_play(self):
         res = self.client().post('/play', json={"previous_questions": [],
-                                            "quiz_category": "ALL"})
+                                                "quiz_category":
+                                                {"type": "click", "id": 0}})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
@@ -112,12 +105,11 @@ class TriviaTestCase(unittest.TestCase):
         data = json.loads(res.data)
 
         self.assertEqual(data['error'], 404)
-        self.assertEqual(data['success'], 'False')
+        self.assertEqual(data['success'], False)
         self.assertEqual(data['message'], "Page Not Found")
 
     def test_422_error(self):
-        res = self.client().get('/questions/search', json={"searchTerm": "!",
-                                                        "category": "ALL"})
+        res = self.client().get('/questions?page=x')
         data = json.loads(res.data)
 
         self.assertEqual(data['error'], 422)
