@@ -195,24 +195,23 @@ def create_app(test_config=None):
     data = request.get_json()
     previous_questions = data['previous_questions']
     quiz_category = data['quiz_category']
-    category_id = 0
-    if quiz_category != "ALL":
-        category_id = int(quiz_category['id'])
+    category_id = int(quiz_category['id'])
     try:
         # Checking if quiz_category is "ALL" or not to set the questions variable by getting the
         # questions from database
         if category_id != 0:
-            questions = Question.query.filter_by(category=category_id).all()
+            questions = Question.query.filter_by(category=str(category_id)).all()
         else:
             questions = Question.query.all()
         available_questions = []
         # To get the questions that are not already used
         for question in questions:
-            if question not in previous_questions:
+            if question.format() not in previous_questions:
                 available_questions.append(question)
         if len(available_questions) > 0:
             # randomly selects a questions from available_questions
             rand_question = available_questions[random.randint(0,len(available_questions)-1)]
+            previous_questions.append(rand_question.format())
             return jsonify({
                 "success" : True,
                 "question" : rand_question.format(),
