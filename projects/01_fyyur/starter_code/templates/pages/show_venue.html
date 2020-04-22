@@ -36,7 +36,7 @@
 				<i class="fas fa-quote-left"></i> {{ venue.seeking_description }} <i class="fas fa-quote-right"></i>
 			</div>
 		</div>
-		{% else %}	
+		{% else %}
 		<p class="not-seeking">
 			<i class="fas fa-moon"></i> Not currently seeking talent
 		</p>
@@ -44,6 +44,19 @@
 	</div>
 	<div class="col-sm-6">
 		<img src="{{ venue.image_link }}" alt="Venue Image" />
+		<button onclick="delete_venue(this)" data-id='{{ venue.id }}'>Delete</button>
+		<script>
+			function delete_venue(buttonInfo) {
+				console.log(buttonInfo)
+				var id = buttonInfo.dataset['id']
+				fetch( '/venues/'+ id , {
+					method: "DELETE"
+				})
+				.then(function(){
+					window.location.href = "/";
+				})
+			}
+  		</script>
 	</div>
 </div>
 <section>
@@ -74,6 +87,5 @@
 		{% endfor %}
 	</div>
 </section>
-
 {% endblock %}
 
