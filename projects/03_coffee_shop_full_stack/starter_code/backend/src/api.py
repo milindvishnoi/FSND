@@ -4,7 +4,7 @@ from sqlalchemy import exc
 import json
 from flask_cors import CORS
 
-from .database.models import db_drop_and_create_all, setup_db, Drink
+from .database.models import *
 from .auth.auth import AuthError, requires_auth
 
 app = Flask(__name__)
@@ -12,11 +12,16 @@ setup_db(app)
 CORS(app)
 
 '''
-@TODO uncomment the following line to initialize the datbase
+@TODO uncomment the following line to initialize the database
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 '''
 # db_drop_and_create_all()
+
+@app.route("/")
+def index():
+    return "Hello"
+
 
 ## ROUTES
 '''
@@ -27,6 +32,26 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
+@app.route("/drinks", methods=["GET"])
+def get_drinks():
+    drinks = list(map(Drink.short, Drink.query.all()))
+    result = {
+        "success": True,
+        "drinks": drinks
+    }
+    return jsonify(result)
+# def get_drinks():
+#     try:
+#         drinks = Drink.query.all()
+#     except:
+#         abort(422)
+#     drinks_formatted = [drink.short() for drink in drinks]
+#     if len(drinks_formatted) != 0:
+#         return jsonify({
+#             "success": True,
+#             "drinks": drinks_formatted
+#         })
+#     abort(404)
 
 
 '''
@@ -37,6 +62,19 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
+@app.route("/drinks-detail", methods=["GET"])
+def get_detailed_drinks():
+    try:
+        drinks = Drink.query.all()
+    except:
+        abort(422)
+    drinks_formatted = [drink.long() for drink in drinks]
+    if len(drinks_formatted) != 0:
+        return jsonify({
+            "success": True,
+            "drinks": drinks_formatted
+        })
+    abort(404)
 
 
 '''
@@ -48,6 +86,19 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the newly created drink
         or appropriate status code indicating reason for failure
 '''
+@app.route("/drinks", methods=["POST"])
+def make_drink():
+    details = query.get_json()
+    try:
+        drink = Drink(title=details["title"], recipe=details["recipe"])
+        db.session.add(drink)
+        db.commit()
+    except:
+        abort(422)
+    return jsonify({
+            "success": True,
+            "drinks": drink.long()
+    })
 
 
 '''
@@ -61,6 +112,19 @@ CORS(app)
     returns status code 200 and json {"success": True, "drinks": drink} where drink an array containing only the updated drink
         or appropriate status code indicating reason for failure
 '''
+@app.route("/drinks/<int:id>", methods=["PATCH"])
+def get_id_drink(id):
+    try:
+        drink = None
+        drink = Drink.query.filter_by(id=id).first()
+    except:
+        abort(422)
+    if drink:
+        return jsonify({
+            "success": True,
+            "drinks": drink.long()
+        })
+    abort(404)
 
 
 '''
@@ -73,6 +137,21 @@ CORS(app)
     returns status code 200 and json {"success": True, "delete": id} where id is the id of the deleted record
         or appropriate status code indicating reason for failure
 '''
+@app.route("/drinks/<int:id>", methods=["PATCH"])
+def delete_drink(id):
+    try:
+        drink = None
+        drink = Drink.query.filter_by(id=id).first()
+        Drink.query.filter_by(id=id).first().delete()
+        db.session.commit()
+    except:
+        abort(422)
+    if drink:
+        return jsonify({
+            "success": True,
+            "drinks": drink.long()
+        })
+    abort(404)
 
 
 ## Error Handling
@@ -97,6 +176,14 @@ def unprocessable(error):
                     }), 404
 
 '''
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+                    "success": False,
+                    "error": 404,
+                    "message": "Resource Not Found"
+                    }), 404
+
 
 '''
 @TODO implement error handler for 404
